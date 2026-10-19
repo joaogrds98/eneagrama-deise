@@ -37,7 +37,7 @@ function PersonalityAtlas({ active, onSelect }: { active: number; onSelect: (ind
   const [interactionRevision, setInteractionRevision] = useState(0)
   const rotationRef = useRef(rotation)
   const selectedRef = useRef(active)
-  const lastInteractionAt = useRef(Date.now())
+  const lastInteractionAt = useRef(0)
   const figure = useRef<HTMLElement | null>(null)
   const orbit = useRef<HTMLDivElement | null>(null)
   const gesture = useRef<{
