@@ -14,9 +14,9 @@ const logo = `${import.meta.env.BASE_URL}branding/logo-original.png`
 function Brand({ light = false }: { light?: boolean }) {
   return (
     <div className={`brand ${light ? 'brand-light' : ''}`}>
-      <img src={logo} alt="Logomarca de Déise A. Zardeto" width="52" height="52" />
+      <img src={logo} alt="Logomarca de Deise A. Zardeto" width="52" height="52" />
       <div>
-        <strong>Déise A. Zardeto</strong>
+        <strong>Deise A. Zardeto</strong>
         <small>Psicologia Clínica e Neuropsicologia</small>
       </div>
     </div>
