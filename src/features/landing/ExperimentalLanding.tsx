@@ -23,14 +23,13 @@ const points = profiles.map((_, index) => {
 const sequence = [0, 3, 1, 7, 4, 6, 0]
 const polygon = (indices: number[]) => indices.map(index => `${points[index].x},${points[index].y}`).join(' ')
 
-const AUTO_ROTATION_INTERVAL = 6_000
+const AUTO_ROTATION_INTERVAL = 2_000
 const MANUAL_IDLE_DELAY = 10_000
 
 function PersonalityAtlas({ active, onSelect }: { active: number; onSelect: (index: number) => void }) {
   const centerFadeId = useId()
   const [rotation, setRotation] = useState(-active * 40)
   const [dragging, setDragging] = useState(false)
-  const [hovered, setHovered] = useState(false)
   const [pageVisible, setPageVisible] = useState(() => document.visibilityState === 'visible')
   const [inView, setInView] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
@@ -101,7 +100,7 @@ function PersonalityAtlas({ active, onSelect }: { active: number; onSelect: (ind
   }, [])
 
   useEffect(() => {
-    if (hovered || dragging || !pageVisible || !inView || reducedMotion) {
+    if (dragging || !pageVisible || !inView || reducedMotion) {
       setAutoAnimating(false)
       return
     }
@@ -115,7 +114,7 @@ function PersonalityAtlas({ active, onSelect }: { active: number; onSelect: (ind
     }, Math.max(AUTO_ROTATION_INTERVAL, idleRemaining))
 
     return () => window.clearTimeout(timer)
-  }, [active, dragging, hovered, inView, interactionRevision, pageVisible, reducedMotion])
+  }, [active, dragging, inView, interactionRevision, pageVisible, reducedMotion])
 
   // A selection in the type directory uses the same fixed focus position.
   useEffect(() => {
@@ -197,24 +196,12 @@ function PersonalityAtlas({ active, onSelect }: { active: number; onSelect: (ind
     buttons.current[next]?.focus({ preventScroll: true })
   }
 
-  function pointerEnter(event: PointerEvent<HTMLDivElement>) {
-    if (event.pointerType !== 'mouse') return
-    noteInteraction()
-    setHovered(true)
-  }
-
-  function pointerLeave(event: PointerEvent<HTMLDivElement>) {
-    if (event.pointerType !== 'mouse') return
-    noteInteraction()
-    setHovered(false)
-  }
-
   function finishAutoTransition(event: TransitionEvent<HTMLDivElement>) {
     if (event.target === orbit.current && event.propertyName === 'transform') setAutoAnimating(false)
   }
 
   return <figure ref={figure} className="atlas" id="personality-atlas" aria-label="Mapa interativo dos nove tipos do Eneagrama">
-    <div role="group" aria-label="Selecionar uma perspectiva" aria-describedby="atlas-help" className={`atlas-dial${dragging ? ' is-dragging' : ''}${autoAnimating ? ' is-auto-animating' : ''}`} style={{ '--dial-rotation': `${rotation}deg` } as CSSProperties} onPointerEnter={pointerEnter} onPointerLeave={pointerLeave} onPointerDown={down} onPointerMove={move} onPointerUp={end} onPointerCancel={event => { if (gesture.current?.id === event.pointerId) settle() }} onLostPointerCapture={event => { if (gesture.current?.id === event.pointerId) settle() }} onKeyDown={keyboard} onTransitionEnd={finishAutoTransition}>
+    <div role="group" aria-label="Selecionar uma perspectiva" aria-describedby="atlas-help" className={`atlas-dial${dragging ? ' is-dragging' : ''}${autoAnimating ? ' is-auto-animating' : ''}`} style={{ '--dial-rotation': `${rotation}deg` } as CSSProperties} onPointerDown={down} onPointerMove={move} onPointerUp={end} onPointerCancel={event => { if (gesture.current?.id === event.pointerId) settle() }} onLostPointerCapture={event => { if (gesture.current?.id === event.pointerId) settle() }} onKeyDown={keyboard} onTransitionEnd={finishAutoTransition}>
       <div className="atlas-orbit" ref={orbit}>
         <svg viewBox="0 0 520 520" aria-hidden="true" className="atlas-lines">
           <defs>
