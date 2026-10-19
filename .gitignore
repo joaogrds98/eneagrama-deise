@@ -1,0 +1,44 @@
+# Dependências e builds
+node_modules/
+dist/
+.vite/
+.pnpm-store/
+
+# Caches, relatórios e arquivos temporários
+.cache/
+.turbo/
+coverage/
+.nyc_output/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+*.log
+*.tmp
+*.temp
+*.bak
+tmp/
+temp/
+
+# Credenciais e configurações locais
+.env
+.env.*
+!.env.example
+*.local
+.npmrc
+.pnpmrc
+.vscode/
+.idea/
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Referências e cópias locais que não fazem parte da aplicação
+checkpoints/
+oeps-source-review.odt
+referenca-visual.png
