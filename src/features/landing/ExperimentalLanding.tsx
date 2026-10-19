@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import type { CSSProperties, KeyboardEvent, PointerEvent } from 'react'
+import type { CSSProperties, KeyboardEvent, PointerEvent, TransitionEvent } from 'react'
 import { ArrowRight, LockKeyhole, MoveUpRight } from 'lucide-react'
 import { profiles } from '../enneagram/profiles'
 import { angleDelta, rotationForType, snapRotation, typeForRotation } from './atlasRotation'
@@ -23,12 +23,23 @@ const points = profiles.map((_, index) => {
 const sequence = [0, 3, 1, 7, 4, 6, 0]
 const polygon = (indices: number[]) => indices.map(index => `${points[index].x},${points[index].y}`).join(' ')
 
+const AUTO_ROTATION_INTERVAL = 6_000
+const MANUAL_IDLE_DELAY = 10_000
+
 function PersonalityAtlas({ active, onSelect }: { active: number; onSelect: (index: number) => void }) {
   const centerFadeId = useId()
   const [rotation, setRotation] = useState(-active * 40)
   const [dragging, setDragging] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [pageVisible, setPageVisible] = useState(() => document.visibilityState === 'visible')
+  const [inView, setInView] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [autoAnimating, setAutoAnimating] = useState(false)
+  const [interactionRevision, setInteractionRevision] = useState(0)
   const rotationRef = useRef(rotation)
   const selectedRef = useRef(active)
+  const lastInteractionAt = useRef(Date.now())
+  const figure = useRef<HTMLElement | null>(null)
   const orbit = useRef<HTMLDivElement | null>(null)
   const gesture = useRef<{
     id: number; x: number; y: number; centerX: number; centerY: number; width: number
@@ -42,6 +53,11 @@ function PersonalityAtlas({ active, onSelect }: { active: number; onSelect: (ind
     rotationRef.current = value
     setRotation(value)
   }
+  function noteInteraction() {
+    lastInteractionAt.current = Date.now()
+    setAutoAnimating(false)
+    setInteractionRevision(revision => revision + 1)
+  }
   function publishSelection(index: number) {
     if (selectedRef.current === index) return
     selectedRef.current = index
@@ -54,9 +70,52 @@ function PersonalityAtlas({ active, onSelect }: { active: number; onSelect: (ind
     return rotationRef.current + angleDelta(rotationRef.current, angle)
   }
   function select(index: number) {
+    noteInteraction()
     rotate(rotationForType(index, displayedRotation()))
     publishSelection(index)
   }
+
+  useEffect(() => {
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const syncMotionPreference = () => setReducedMotion(motionPreference.matches)
+    const syncPageVisibility = () => setPageVisible(document.visibilityState === 'visible')
+    motionPreference.addEventListener('change', syncMotionPreference)
+    document.addEventListener('visibilitychange', syncPageVisibility)
+
+    const element = figure.current
+    if (!('IntersectionObserver' in window)) {
+      setInView(true)
+      return () => {
+        motionPreference.removeEventListener('change', syncMotionPreference)
+        document.removeEventListener('visibilitychange', syncPageVisibility)
+      }
+    }
+
+    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), { threshold: .15 })
+    if (element) observer.observe(element)
+    return () => {
+      motionPreference.removeEventListener('change', syncMotionPreference)
+      document.removeEventListener('visibilitychange', syncPageVisibility)
+      observer.disconnect()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (hovered || dragging || !pageVisible || !inView || reducedMotion) {
+      setAutoAnimating(false)
+      return
+    }
+
+    const idleRemaining = Math.max(0, lastInteractionAt.current + MANUAL_IDLE_DELAY - Date.now())
+    const timer = window.setTimeout(() => {
+      const next = (selectedRef.current + 1) % profiles.length
+      setAutoAnimating(true)
+      rotate(rotationForType(next, displayedRotation()))
+      publishSelection(next)
+    }, Math.max(AUTO_ROTATION_INTERVAL, idleRemaining))
+
+    return () => window.clearTimeout(timer)
+  }, [active, dragging, hovered, inView, interactionRevision, pageVisible, reducedMotion])
 
   // A selection in the type directory uses the same fixed focus position.
   useEffect(() => {
@@ -69,6 +128,7 @@ function PersonalityAtlas({ active, onSelect }: { active: number; onSelect: (ind
 
   function down(event: PointerEvent<HTMLDivElement>) {
     if (gesture.current || !event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return
+    noteInteraction()
     const rect = event.currentTarget.getBoundingClientRect()
     const centerX = rect.left + rect.width / 2
     const centerY = rect.top + rect.height / 2
@@ -113,6 +173,7 @@ function PersonalityAtlas({ active, onSelect }: { active: number; onSelect: (ind
     const moved = gesture.current?.moved
     gesture.current = null
     setDragging(false)
+    noteInteraction()
     if (moved) {
       const next = snapRotation(rotationRef.current)
       rotate(next)
@@ -136,8 +197,24 @@ function PersonalityAtlas({ active, onSelect }: { active: number; onSelect: (ind
     buttons.current[next]?.focus({ preventScroll: true })
   }
 
-  return <figure className="atlas" id="personality-atlas" aria-label="Mapa interativo dos nove tipos do Eneagrama">
-    <div role="group" aria-label="Selecionar uma perspectiva" aria-describedby="atlas-help" className={`atlas-dial${dragging ? ' is-dragging' : ''}`} style={{ '--dial-rotation': `${rotation}deg` } as CSSProperties} onPointerDown={down} onPointerMove={move} onPointerUp={end} onPointerCancel={event => { if (gesture.current?.id === event.pointerId) settle() }} onLostPointerCapture={event => { if (gesture.current?.id === event.pointerId) settle() }} onKeyDown={keyboard}>
+  function pointerEnter(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== 'mouse') return
+    noteInteraction()
+    setHovered(true)
+  }
+
+  function pointerLeave(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== 'mouse') return
+    noteInteraction()
+    setHovered(false)
+  }
+
+  function finishAutoTransition(event: TransitionEvent<HTMLDivElement>) {
+    if (event.target === orbit.current && event.propertyName === 'transform') setAutoAnimating(false)
+  }
+
+  return <figure ref={figure} className="atlas" id="personality-atlas" aria-label="Mapa interativo dos nove tipos do Eneagrama">
+    <div role="group" aria-label="Selecionar uma perspectiva" aria-describedby="atlas-help" className={`atlas-dial${dragging ? ' is-dragging' : ''}${autoAnimating ? ' is-auto-animating' : ''}`} style={{ '--dial-rotation': `${rotation}deg` } as CSSProperties} onPointerEnter={pointerEnter} onPointerLeave={pointerLeave} onPointerDown={down} onPointerMove={move} onPointerUp={end} onPointerCancel={event => { if (gesture.current?.id === event.pointerId) settle() }} onLostPointerCapture={event => { if (gesture.current?.id === event.pointerId) settle() }} onKeyDown={keyboard} onTransitionEnd={finishAutoTransition}>
       <div className="atlas-orbit" ref={orbit}>
         <svg viewBox="0 0 520 520" aria-hidden="true" className="atlas-lines">
           <defs>
@@ -167,7 +244,7 @@ function PersonalityAtlas({ active, onSelect }: { active: number; onSelect: (ind
         </svg>
         {profiles.map((item, index) => <button ref={element => { buttons.current[index] = element }} className={`atlas-node${active === index ? ' is-selected' : ''}`} type="button" key={item.type} style={{ left: `${points[index].x / 5.2}%`, top: `${points[index].y / 5.2}%` }} aria-label={`Explorar tipo ${item.type}: ${item.name}`} aria-pressed={active === index} tabIndex={active === index ? 0 : -1} onClick={() => { if (!suppressClick.current) select(index) }}>{String(item.type).padStart(2, '0')}</button>)}
       </div>
-      <div className="atlas-reading" aria-live="polite" aria-atomic="true" key={active}>
+      <div className="atlas-reading" aria-live={autoAnimating ? 'off' : 'polite'} aria-atomic="true" key={active}>
         <span className="atlas-reading-label">TIPO {String(profile.type).padStart(2, '0')}</span>
         <strong>{profile.name}</strong>
         <span className="atlas-reading-rule" />

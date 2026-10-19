@@ -30,7 +30,9 @@ O atlas oferece uma exploração imediata dos nove tipos sem esconder itens. A t
 - Os números permanecem na orientação de leitura durante o giro. Nome e descrição do tipo ficam no centro.
 - Textos auxiliares visíveis e botões de navegação ao redor do mapa foram removidos.
 - O diretório de tipos seleciona um tipo e retorna ao mapa.
-- Animações de entrada curtas e nenhuma rotação automática.
+- Rotação automática do mapa a cada seis segundos, com transição de 800 ms. A ordem cíclica mantém a continuidade física, inclusive do tipo 9 ao tipo 1.
+- A rotação pausa enquanto o mouse está sobre o mapa, durante arraste, quando a página está oculta, quando o mapa sai da viewport ou quando `prefers-reduced-motion` está ativo. Depois da interação, retoma após dez segundos sem atividade manual.
+- Nomes e descrições centrais são atualizados com cada tipo; mudanças automáticas ficam fora da região anunciada pelo leitor de tela para evitar fala repetitiva.
 - `prefers-reduced-motion` desativa animações e transições.
 
 As descrições exploratórias do mapa não constituem uma avaliação e não afetam respostas ou pontuação.
@@ -50,6 +52,8 @@ Para retornar visualmente à versão anterior, use `?design=anterior`. Para rest
 Layout conferido em 1920 × 1080, 1366 × 768, 1280 × 720 e 375 × 667. Nas três resoluções desktop, cabeçalho e Hero ocupam uma viewport com CTA visível. No celular, o CTA antecede o mapa e a página segue com rolagem natural. Nenhuma das quatro apresentou rolagem horizontal.
 
 Também foram conferidos os nove estados de seleção do mapa, teclado com retorno circular, arraste, navegação por âncoras, nome com acentos, início do questionário, resposta obrigatória, avanço e limpeza do nome ao reiniciar. O conteúdo das seções permanece visível mesmo sem a execução da animação de entrada.
+
+A rotação automática foi validada no navegador em tempo real: os nove tipos avançaram em intervalos de aproximadamente seis segundos, com transições de 800 ms, e o ciclo de nove para um percorreu os 40 graus mais próximos sem inversão. O hover manteve o tipo estável por mais de dez segundos. Um arraste fora do diagrama iniciou a espera de inatividade de dez segundos, após a qual o avanço automático foi retomado. O gesto de arraste também foi conferido no layout mobile.
 
 Capturas e medidas da revisão estão em `tmp/landing-redesign-qa/`.
 

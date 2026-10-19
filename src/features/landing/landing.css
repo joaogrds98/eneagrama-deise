@@ -39,6 +39,7 @@
 .landing-experimental .atlas-dial{position:relative;aspect-ratio:1;container-type:inline-size;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
 .landing-experimental .atlas-dial.is-dragging{cursor:grabbing}
 .landing-experimental .atlas-orbit{position:absolute;inset:0;transform:rotate(var(--dial-rotation,0deg));transition:transform .5s cubic-bezier(.22,.8,.24,1)}
+.landing-experimental .atlas-dial.is-auto-animating .atlas-orbit,.landing-experimental .atlas-dial.is-auto-animating .atlas-node{transition-duration:.8s}
 .landing-experimental .atlas-dial.is-dragging .atlas-orbit,.landing-experimental .atlas-dial.is-dragging .atlas-node{transition:none}
 .landing-experimental .atlas-dial.is-dragging .atlas-reading{animation:none}
 .landing-experimental .atlas-lines{width:100%;height:100%;overflow:visible;pointer-events:none}
