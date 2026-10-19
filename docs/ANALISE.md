@@ -41,4 +41,6 @@ O questionário educativo original de 36 itens foi substituído em 16/10/2026 pe
 
 ## Registro de autorização
 
+Em 19/10/2026, o responsável pelo projeto confirmou expressamente que a autorização inclui a distribuição pública dos 135 enunciados e da chave no GitHub, no repositório `joaogrds98/eneagrama-deise`. A confirmação é uma declaração do responsável, sem documento anexado; não concede licença aberta de reutilização a terceiros.
+
 A confirmação de autorização chegou como informação do responsável pelo projeto em 16/10/2026; nenhum documento foi anexado. Os perfis interpretativos continuam textos editoriais. O projeto não declara validação psicométrica não demonstrada nem equivalência a OEPS ou AgentTune.

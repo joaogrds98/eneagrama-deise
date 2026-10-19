@@ -2,7 +2,7 @@
 
 Aplicação web estática de autoconhecimento para Déise A. Zardeto. Inclui as 135 afirmações do questionário Emotional Coaching, navegação em ordem embaralhada, cálculo das pontuações dos nove tipos, percentuais de participação, resultados e PDF gerado no navegador. As respostas ficam somente na memória da sessão. Não há backend, banco de dados, conta, analytics ou envio de respostas.
 
-A autorização de reprodução e adaptação foi informada pelo responsável do projeto em 16/10/2026. Consulte [metodologia](docs/METODOLOGIA.md), [análise de fontes](docs/ANALISE.md) e [status](docs/STATUS.md).
+A autorização de reprodução e adaptação foi informada pelo responsável do projeto em 16/10/2026. Em 19/10/2026, ele confirmou que ela também cobre a distribuição pública dos 135 enunciados e da chave neste repositório GitHub. Essa declaração não concede uma licença aberta de reutilização a terceiros. Consulte [metodologia](docs/METODOLOGIA.md), [análise de fontes](docs/ANALISE.md), [status](docs/STATUS.md) e [avisos de terceiros](THIRD_PARTY_NOTICES.md).
 
 ## Tecnologia
 
