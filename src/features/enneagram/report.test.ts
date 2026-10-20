@@ -12,6 +12,12 @@ const makeResult = (leaders: EnneagramType[]) => {
   return activeAssessment.score(answers)
 }
 
+function saveRender(name: string, bytes: Uint8Array) {
+  if (process.env.RENDER_PDF !== '1') return
+  mkdirSync(resolve('tmp/pdfs'), { recursive: true })
+  writeFileSync(resolve(`tmp/pdfs/${name}.pdf`), bytes)
+}
+
 describe('local PDF report', () => {
   beforeEach(() => {
     const logo = readFileSync(resolve('public/branding/logo-original.png'))
@@ -19,28 +25,36 @@ describe('local PDF report', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  it('creates a readable A4 report with a unique leader', async () => {
+  it('creates a two-page A4 report with one clear leader', async () => {
     const bytes = await createReport(makeResult([5]), new Date('2026-10-16T12:00:00Z'))
     const pdf = await PDFDocument.load(bytes)
-    expect(pdf.getTitle()).toBe('Eneagrama — Relatório de autoconhecimento')
+    expect(pdf.getTitle()).toBe('Eneagrama - Relatório de autoconhecimento')
     expect(pdf.getAuthor()).toBe('Deise A. Zardeto Bello')
-    expect(pdf.getPageCount()).toBeGreaterThanOrEqual(1)
+    expect(pdf.getPageCount()).toBe(2)
     expect(pdf.getPages()[0].getSize().width).toBeCloseTo(595.28, 1)
     expect(bytes.length).toBeGreaterThan(10_000)
-    if (process.env.RENDER_PDF === '1') {
-      mkdirSync(resolve('tmp/pdfs'), { recursive: true })
-      writeFileSync(resolve('tmp/pdfs/report-check.pdf'), bytes)
-    }
+    saveRender('report-single-leader', bytes)
   })
 
-  it('creates a report for all tied leaders without selecting a winner', async () => {
+  it('keeps two tied leaders equal and fits the report in two pages', async () => {
+    const bytes = await createReport(makeResult([2, 7]), new Date('2026-10-16T12:00:00Z'))
+    const pdf = await PDFDocument.load(bytes)
+    expect(pdf.getPageCount()).toBe(2)
+    saveRender('report-two-way-tie', bytes)
+  })
+
+  it('lays out five tied profiles without clipping or naming a winner', async () => {
+    const bytes = await createReport(makeResult([1, 3, 5, 7, 9]), new Date('2026-10-16T12:00:00Z'))
+    const pdf = await PDFDocument.load(bytes)
+    expect(pdf.getPageCount()).toBe(3)
+    saveRender('report-five-way-tie', bytes)
+  })
+
+  it('lays out all nine tied profiles without clipping or naming a winner', async () => {
     const bytes = await createReport(makeResult(types), new Date('2026-10-16T12:00:00Z'))
     const pdf = await PDFDocument.load(bytes)
-    expect(pdf.getPageCount()).toBeGreaterThanOrEqual(1)
-    if (process.env.RENDER_PDF === '1') {
-      mkdirSync(resolve('tmp/pdfs'), { recursive: true })
-      writeFileSync(resolve('tmp/pdfs/report-tie-check.pdf'), bytes)
-    }
+    expect(pdf.getPageCount()).toBe(4)
+    saveRender('report-nine-way-tie', bytes)
   })
 
   it('sanitizes accented and special characters for a safe personalized filename', () => {
@@ -63,9 +77,6 @@ describe('local PDF report', () => {
     const pdf = await PDFDocument.load(bytes)
     expect(pdf.getPageCount()).toBeGreaterThanOrEqual(1)
     expect(bytes.length).toBeGreaterThan(10_000)
-    if (process.env.RENDER_PDF === '1') {
-      mkdirSync(resolve('tmp/pdfs'), { recursive: true })
-      writeFileSync(resolve('tmp/pdfs/report-long-name-check.pdf'), bytes)
-    }
+    saveRender('report-long-participant-name', bytes)
   })
 })
