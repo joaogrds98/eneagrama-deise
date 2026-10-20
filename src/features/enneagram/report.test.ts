@@ -25,35 +25,35 @@ describe('local PDF report', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  it('creates a two-page A4 report with one clear leader', async () => {
+  it('fits one clear leader and the score distribution on one A4 page', async () => {
     const bytes = await createReport(makeResult([5]), new Date('2026-10-16T12:00:00Z'))
     const pdf = await PDFDocument.load(bytes)
     expect(pdf.getTitle()).toBe('Eneagrama - Relatório de autoconhecimento')
     expect(pdf.getAuthor()).toBe('Deise A. Zardeto Bello')
-    expect(pdf.getPageCount()).toBe(2)
+    expect(pdf.getPageCount()).toBe(1)
     expect(pdf.getPages()[0].getSize().width).toBeCloseTo(595.28, 1)
     expect(bytes.length).toBeGreaterThan(10_000)
     saveRender('report-single-leader', bytes)
   })
 
-  it('keeps two tied leaders equal and fits the report in two pages', async () => {
+  it('keeps two tied leaders equal in a one-page report when space permits', async () => {
     const bytes = await createReport(makeResult([2, 7]), new Date('2026-10-16T12:00:00Z'))
     const pdf = await PDFDocument.load(bytes)
-    expect(pdf.getPageCount()).toBe(2)
+    expect(pdf.getPageCount()).toBe(1)
     saveRender('report-two-way-tie', bytes)
   })
 
   it('lays out five tied profiles without clipping or naming a winner', async () => {
     const bytes = await createReport(makeResult([1, 3, 5, 7, 9]), new Date('2026-10-16T12:00:00Z'))
     const pdf = await PDFDocument.load(bytes)
-    expect(pdf.getPageCount()).toBe(3)
+    expect(pdf.getPageCount()).toBe(2)
     saveRender('report-five-way-tie', bytes)
   })
 
   it('lays out all nine tied profiles without clipping or naming a winner', async () => {
     const bytes = await createReport(makeResult(types), new Date('2026-10-16T12:00:00Z'))
     const pdf = await PDFDocument.load(bytes)
-    expect(pdf.getPageCount()).toBe(4)
+    expect(pdf.getPageCount()).toBe(2)
     saveRender('report-nine-way-tie', bytes)
   })
 
@@ -75,7 +75,7 @@ describe('local PDF report', () => {
     expect(safeName.length).toBeLessThanOrEqual(72)
     const bytes = await createReport(makeResult([5]), new Date('2026-10-16T12:00:00Z'), longName)
     const pdf = await PDFDocument.load(bytes)
-    expect(pdf.getPageCount()).toBeGreaterThanOrEqual(1)
+    expect(pdf.getPageCount()).toBe(1)
     expect(bytes.length).toBeGreaterThan(10_000)
     saveRender('report-long-participant-name', bytes)
   })
