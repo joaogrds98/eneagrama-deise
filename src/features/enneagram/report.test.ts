@@ -23,7 +23,7 @@ describe('local PDF report', () => {
     const bytes = await createReport(makeResult([5]), new Date('2026-10-16T12:00:00Z'))
     const pdf = await PDFDocument.load(bytes)
     expect(pdf.getTitle()).toBe('Eneagrama — Relatório de autoconhecimento')
-    expect(pdf.getAuthor()).toBe('Deise A. Zardeto')
+    expect(pdf.getAuthor()).toBe('Deise A. Zardeto Bello')
     expect(pdf.getPageCount()).toBeGreaterThanOrEqual(1)
     expect(pdf.getPages()[0].getSize().width).toBeCloseTo(595.28, 1)
     expect(bytes.length).toBeGreaterThan(10_000)

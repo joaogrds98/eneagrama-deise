@@ -263,7 +263,7 @@ export function ExperimentalLanding({ participantName, onNameChange, onStart, av
   return <div className="landing-experimental" ref={root}>
     <div className="editorial-header-wrap">
       <header className="editorial-header editorial-container">
-        <a className="editorial-brand" href="#inicio" aria-label="Deise A. Zardeto, início"><img src={`${import.meta.env.BASE_URL}branding/logo-header-transparent.svg`} alt="Logomarca de Deise A. Zardeto" width="52" height="52" /><span><strong>Deise A. Zardeto</strong><small>Psicologia Clínica e Neuropsicologia</small></span></a>
+        <a className="editorial-brand" href="#inicio" aria-label="Deise A. Zardeto Bello, início"><img src={`${import.meta.env.BASE_URL}branding/logo-header-transparent.svg`} alt="Logomarca de Deise A. Zardeto Bello" width="52" height="52" /><span><strong>Deise A. Zardeto Bello</strong><small>Psicologia Clínica e Neuropsicologia</small></span></a>
         <nav aria-label="Navegação principal"><span className="editorial-product">ENEAGRAMA</span><a href="#about-enneagram">Sobre a experiência <MoveUpRight size={13} /></a></nav>
       </header>
     </div>
@@ -303,6 +303,6 @@ export function ExperimentalLanding({ participantName, onNameChange, onStart, av
 
     <section className="editorial-privacy"><div className="editorial-container editorial-reveal"><LockKeyhole size={23} strokeWidth={1.3} /><div><h2>Este espaço é seu.</h2><p>Seu nome e suas respostas ficam somente na memória desta página. O relatório é gerado no seu navegador. Nada é enviado ou armazenado; ao recarregar, os dados se perdem.</p></div><a href="#start-test">Começar minha reflexão <ArrowRight size={17} /></a></div></section>
     </main>
-    <footer className="editorial-footer editorial-container"><div><strong>Deise A. Zardeto</strong><span>Psicologia Clínica e Neuropsicologia</span></div><p>Conhecer-se é um processo.<br /><span>Este pode ser um começo.</span></p><small>© {new Date().getFullYear()} · Eneagrama<br />Uma experiência de autoconhecimento.</small></footer>
+    <footer className="editorial-footer editorial-container"><div><strong>Deise A. Zardeto Bello</strong><span>Psicologia Clínica e Neuropsicologia</span></div><p>Conhecer-se é um processo.<br /><span>Este pode ser um começo.</span></p><small>© {new Date().getFullYear()} · Eneagrama<br />Uma experiência de autoconhecimento.</small></footer>
   </div>
 }

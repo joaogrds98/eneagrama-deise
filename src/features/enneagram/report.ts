@@ -62,7 +62,7 @@ export function reportFilename(participantName = ''): string {
 export async function createReport(result: ScoreResult, performedAt: Date, participantName = ''): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
   doc.setTitle('Eneagrama — Relatório de autoconhecimento')
-  doc.setAuthor('Deise A. Zardeto')
+  doc.setAuthor('Deise A. Zardeto Bello')
   const regular = await doc.embedFont(StandardFonts.Helvetica)
   const bold = await doc.embedFont(StandardFonts.HelveticaBold)
   const logoResponse = await fetch(`${import.meta.env.BASE_URL}branding/logo-original.png`)
@@ -75,7 +75,7 @@ export async function createReport(result: ScoreResult, performedAt: Date, parti
   let page = doc.addPage([width, height])
   page.drawRectangle({ x: 0, y: height - 14, width, height: 14, color: navy })
   page.drawImage(logo, { x: margin, y: height - 130, width: 80, height: 80 })
-  page.drawText('Deise A. Zardeto', { x: 144, y: height - 75, size: 16, font: bold, color: navy })
+  page.drawText('Deise A. Zardeto Bello', { x: 144, y: height - 75, size: 16, font: bold, color: navy })
   page.drawText('Psicologia Clínica e Neuropsicologia', { x: 144, y: height - 94, size: 8, font: regular, color: muted })
   page.drawText('Relatório de autoconhecimento · Eneagrama', { x: 144, y: height - 109, size: 9, font: regular, color: muted })
   let dividerY: number
@@ -148,7 +148,7 @@ export async function createReport(result: ScoreResult, performedAt: Date, parti
   y -= 20
   drawWrapped(page, disclaimer, regular, 8, margin, y, width - margin * 2, muted, 12)
   for (const [index, pdfPage] of doc.getPages().entries()) {
-    pdfPage.drawText(`Deise A. Zardeto   |   ${index + 1}/${doc.getPageCount()}`, { x: margin, y: 28, size: 8, font: regular, color: muted })
+    pdfPage.drawText(`Deise A. Zardeto Bello   |   ${index + 1}/${doc.getPageCount()}`, { x: margin, y: 28, size: 8, font: regular, color: muted })
   }
   return doc.save()
 }
