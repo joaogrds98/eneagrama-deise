@@ -9,7 +9,7 @@ import type { Answers, Assessment, Instrument, ScoreResult } from './features/en
 import { ExperimentalLanding } from './features/landing/ExperimentalLanding'
 
 type View = 'home' | 'quiz' | 'result'
-const logo = `${import.meta.env.BASE_URL}branding/logo-original.png`
+const logo = `${import.meta.env.BASE_URL}branding/logo-header-transparent.svg`
 
 function Brand({ light = false }: { light?: boolean }) {
   return (
