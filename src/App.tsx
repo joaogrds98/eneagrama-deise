@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent, PointerEvent } from 'react'
 import { ArrowLeft, ArrowRight, Download, LockKeyhole, RotateCcw, ShieldCheck, Sparkles } from 'lucide-react'
 import { activeAssessment } from './features/enneagram/instrument'
-import { getProfile, profiles } from './features/enneagram/profiles'
+import { profiles } from './features/enneagram/profiles'
+import { ResultVisualizations } from './features/enneagram/ResultVisualizations'
 import { validateAnswers, validateInstrument, validateScoreResult } from './features/enneagram/scoring'
 import { shuffleItems } from './features/enneagram/shuffle'
 import type { Answers, Assessment, Instrument, ScoreResult } from './features/enneagram/types'
@@ -287,7 +288,6 @@ function Quiz({ assessment, onFinish, onBack }: { assessment: Assessment; onFini
 function Results({ result, performedAt, participantName, onRestart }: { result: ScoreResult; performedAt: Date; participantName: string; onRestart: () => void }) {
   const [downloading, setDownloading] = useState(false)
   const [pdfError, setPdfError] = useState('')
-  const leader = result.dominantType ? getProfile(result.dominantType) : null
   async function handleDownload() {
     setDownloading(true)
     setPdfError('')
@@ -297,30 +297,16 @@ function Results({ result, performedAt, participantName, onRestart }: { result: 
   }
   return (
     <main className="results-shell container">
-      <div className="result-topline"><span className="eyebrow">SEU RESULTADO</span><span>{new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(performedAt)}</span></div>
-      <section className="result-hero">
-        <div className="result-emblem"><Sparkles size={22} strokeWidth={1.3} /><span>{leader ? String(leader.type).padStart(2, '0') : '='}</span></div>
-        <div>{participantName.trim() && <p className="result-participant">Uma reflexão para {participantName.trim()}</p>}<span className="eyebrow light">{leader ? 'TIPO COM MAIOR PONTUAÇÃO' : 'PONTUAÇÕES MAIS ALTAS EM EMPATE'}</span><h1>{leader ? leader.name : result.leaders.map(type => getProfile(type).name).join(' · ')}</h1><p>{leader ? leader.summary : 'Suas respostas não apontaram um único tipo com maior pontuação. Considere as descrições empatadas como convites à reflexão.'}</p></div>
-      </section>
-      {leader && <section className="insight-grid" aria-label="Reflexões sobre o tipo">
-        <article><span className="eyebrow">CARACTERÍSTICAS</span><h2>Traços associados</h2><div className="trait-list">{leader.traits.map(trait => <span key={trait}>{trait}</span>)}</div></article>
-        <article><span className="eyebrow">POTENCIAIS RECURSOS</span><h2>Pontos fortes</h2><p>{leader.strengths}</p></article>
-        <article><span className="eyebrow">ATENÇÃO GENTIL</span><h2>Possíveis desafios</h2><p>{leader.challenges}</p></article>
-        <article className="reflection-card"><span className="eyebrow">PARA REFLETIR</span><h2>Uma pergunta para levar</h2><p>{leader.reflection}</p></article>
-      </section>}
-      {!leader && <section className="insight-grid" aria-label="Tipos com pontuação empatada">
-        {result.leaders.map(type => {
-          const profile = getProfile(type)
-          return <article key={type}><span className="eyebrow">TIPO {type} · {profile.name.toUpperCase()}</span><h2>{profile.summary}</h2><p><strong>Para refletir:</strong> {profile.reflection}</p></article>
-        })}
-      </section>}
-      <section className="scores-section"><div className="scores-heading"><div><span className="eyebrow">PANORAMA COMPLETO</span><h2>Os nove tipos <em>em perspectiva.</em></h2></div><p>Soma de 15 respostas por tipo, cada uma de 1 a 5 pontos. Participação relativa ao total das nove somas.</p></div>
-        <div className="score-list">{result.scores.map(score => <div className="score-row" key={score.type}><div className="score-label"><strong>{String(score.type).padStart(2, '0')}</strong><span>{getProfile(score.type).name}</span></div><div className="score-track" role="img" aria-label={`Tipo ${score.type}: ${score.raw} de ${score.maximum} pontos; ${score.percentage.toFixed(1)}% do total`}><div className={result.leaders.includes(score.type) ? 'leader' : ''} style={{ width: `${((score.raw - score.minimum) / (score.maximum - score.minimum)) * 100}%` }} /></div><strong className="score-value">{score.raw}<span> / {score.maximum}</span><small>{score.percentage.toFixed(1)}%</small></strong></div>)}</div>
-        <p className="score-explainer">O percentual é a soma do tipo dividida pela soma dos nove tipos. A barra mostra a posição no intervalo de 15 a 75 pontos. Nenhum deles indica probabilidade, percentil ou precisão.</p>
-      </section>
+      <div className="result-topline"><span className="eyebrow">RESULTADO TIPO ENEAGRAMA</span><span>Teste realizado em {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(performedAt)}</span></div>
+      <header className="results-title-block">
+        <h1>Resultado Tipo Eneagrama</h1>
+        {participantName.trim() && <p>Participante: <strong>{participantName.trim()}</strong></p>}
+        {result.leaders.length > 1 && <p className="results-tie-note">Empate entre {result.leaders.map(type => `Tipo ${type}`).join(', ')} · nenhuma pontuação foi usada para desempatar.</p>}
+      </header>
+      <ResultVisualizations result={result} />
       <div className="result-actions"><button className="button button-navy" onClick={handleDownload} disabled={downloading}><Download size={18} />{downloading ? 'Gerando relatório…' : 'Baixar meu relatório'}</button><button className="button button-outline" onClick={onRestart}><RotateCcw size={17} /> Reiniciar teste</button></div>
       {pdfError && <p className="form-error" role="alert">{pdfError}</p>}
-      <p className="disclaimer">Questionário utilizado pelo Emotional Coaching, reproduzido nesta plataforma conforme autorização informada pelo responsável do projeto. As pontuações descrevem estas respostas e não substituem avaliação profissional.</p>
+      <p className="disclaimer">Questionário utilizado pelo Emotional Coaching, reproduzido nesta plataforma conforme autorização informada pelo responsável do projeto. As pontuações descrevem estas respostas; o resultado é uma ferramenta de reflexão e não constitui diagnóstico psicológico.</p>
     </main>
   )
 }

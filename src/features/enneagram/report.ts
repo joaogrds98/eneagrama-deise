@@ -1,183 +1,185 @@
 import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from 'pdf-lib'
 import { getProfile } from './profiles'
-import type { ScoreResult } from './types'
+import { getResultVisualData, typeColors } from './resultVisuals'
+import type { EnneagramType, ScoreResult } from './types'
 
-const navy = rgb(0.03, 0.15, 0.34)
-const gold = rgb(0.72, 0.52, 0.22)
-const muted = rgb(0.36, 0.4, 0.46)
-const lightRule = rgb(0.83, 0.85, 0.87)
-const track = rgb(0.91, 0.92, 0.92)
-const disclaimer = 'Este relatório é uma ferramenta de reflexão. Não constitui diagnóstico psicológico nem substitui avaliação profissional.'
-const method = 'Questionário Emotional Coaching: 135 afirmações, 15 por tipo, escala de respostas de 1 a 5 e soma direta de 15 a 75 pontos por tipo. Empates são preservados, sem desempate.'
-const percentNote = 'Os percentuais representam a participação de cada soma no total das nove. Não correspondem à probabilidade de uma personalidade nem a uma comparação populacional.'
-const margin = 48
-const pageWidth = 595.28
-const pageHeight = 841.89
-const contentWidth = pageWidth - margin * 2
-const bottomLimit = 60
+const navy = '#082857'
+const gold = '#c99a4a'
+const muted = '#586570'
+const lightRule = '#d9e0e5'
+const pageWidth = 841.89
+const pageHeight = 595.28
+const margin = 36
+const disclaimer = 'Este relatório é uma ferramenta de reflexão e não constitui diagnóstico psicológico nem substitui avaliação profissional.'
+const method = 'Instrumento Emotional Coaching: 135 afirmações, 15 por tipo, respondidas em escala de 1 a 5; cada tipo é calculado pela soma direta das respostas (15 a 75 pontos). Os empates são preservados.'
 
-type Fonts = { regular: PDFFont; bold: PDFFont; serif: PDFFont; serifBold: PDFFont }
+type Fonts = { regular: PDFFont; bold: PDFFont }
+
+function color(hex: string) {
+  return rgb(parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255)
+}
 
 function wrapText(text: string, font: PDFFont, size: number, width: number): string[] {
   const lines: string[] = []
   let line = ''
   for (const word of text.split(/\s+/)) {
     const candidate = line ? `${line} ${word}` : word
-    if (font.widthOfTextAtSize(candidate, size) <= width) {
-      line = candidate
-      continue
-    }
-    if (line) lines.push(line)
-    if (font.widthOfTextAtSize(word, size) <= width) {
+    if (font.widthOfTextAtSize(candidate, size) <= width) line = candidate
+    else {
+      if (line) lines.push(line)
       line = word
-      continue
     }
-    let fragment = ''
-    for (const character of word) {
-      if (fragment && font.widthOfTextAtSize(fragment + character, size) > width) {
-        lines.push(fragment)
-        fragment = character
-      } else fragment += character
-    }
-    line = fragment
   }
   if (line) lines.push(line)
   return lines
 }
 
-function drawParagraph(page: PDFPage, text: string, font: PDFFont, size: number, x: number, y: number, width: number, color = navy, leading = size * 1.4): number {
-  for (const line of wrapText(text, font, size, width)) {
-    page.drawText(line, { x, y, size, font, color })
-    y -= leading
+function drawRight(page: PDFPage, text: string, xRight: number, y: number, size: number, font: PDFFont, fill: string) {
+  page.drawText(text, { x: xRight - font.widthOfTextAtSize(text, size), y, size, font, color: color(fill) })
+}
+
+function drawHeader(page: PDFPage, fonts: Fonts, logo: Awaited<ReturnType<PDFDocument['embedPng']>>, performedAt: Date, participantName: string) {
+  page.drawRectangle({ x: 0, y: pageHeight - 6, width: pageWidth, height: 6, color: color(navy) })
+  const size = logo.scaleToFit(43, 43)
+  page.drawImage(logo, { x: margin, y: pageHeight - 60 + (43 - size.height) / 2, ...size })
+  page.drawText('Deise A. Zardeto Bello', { x: 91, y: pageHeight - 32, size: 13.5, font: fonts.bold, color: color(navy) })
+  page.drawText('Psicologia Clínica e Neuropsicologia', { x: 91, y: pageHeight - 48, size: 8.4, font: fonts.regular, color: color(muted) })
+  page.drawText('RELATÓRIO DE AUTOCONHECIMENTO  ·  ENEAGRAMA', { x: 91, y: pageHeight - 61, size: 6.4, font: fonts.bold, color: color(gold) })
+  const date = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(performedAt)
+  drawRight(page, 'TESTE REALIZADO EM', pageWidth - margin, pageHeight - 31, 6.5, fonts.bold, gold)
+  drawRight(page, date, pageWidth - margin, pageHeight - 45, 8.7, fonts.regular, navy)
+  if (participantName.trim()) {
+    const lines = wrapText(`Participante: ${participantName.trim()}`, fonts.regular, 8, 235).slice(0, 2)
+    lines.forEach((line, index) => drawRight(page, line, pageWidth - margin, pageHeight - 60 - index * 10, 8, fonts.regular, muted))
   }
-  return y
+  page.drawLine({ start: { x: margin, y: pageHeight - 76 }, end: { x: pageWidth - margin, y: pageHeight - 76 }, thickness: 0.7, color: color(gold) })
 }
 
-function textHeight(text: string, font: PDFFont, size: number, width: number, leading: number): number {
-  return wrapText(text, font, size, width).length * leading
-}
+function drawTypeTable(page: PDFPage, fonts: Fonts, visual: ReturnType<typeof getResultVisualData>) {
+  const x = margin
+  const top = 458
+  const widths = [107, 91, 91, 76]
+  const tableWidth = widths.reduce((sum, value) => sum + value, 0)
+  page.drawText('Tipos e centros de inteligência', { x, y: top, size: 11.5, font: fonts.bold, color: color(navy) })
+  const headerTop = top - 10
+  const headerHeight = 27
+  const rowHeight = 31
+  const bodyTop = headerTop - headerHeight
+  page.drawRectangle({ x, y: bodyTop, width: tableWidth, height: headerHeight, color: color('#f2f4f5'), borderColor: color(lightRule), borderWidth: 0.6 })
+  const columns = ['Tipo psicológico', 'Nome', 'Centro de\nInteligência', 'Representatividade']
+  let columnX = x
+  columns.forEach((label, index) => {
+    const lines = label.split('\n')
+    lines.forEach((line, lineIndex) => page.drawText(line, { x: columnX + 6, y: bodyTop + (lines.length > 1 ? 15 : 10) - lineIndex * 9, size: 6.4, font: fonts.bold, color: color(navy) }))
+    columnX += widths[index]
+    if (index < widths.length - 1) page.drawLine({ start: { x: columnX, y: bodyTop }, end: { x: columnX, y: headerTop }, thickness: 0.5, color: color(lightRule) })
+  })
 
-function sectionsFor(profile: ReturnType<typeof getProfile>) {
-  return [
-    ['Características', profile.traits.join(' · ')],
-    ['Pontos fortes', profile.strengths],
-    ['Possíveis desafios', profile.challenges],
-    ['Para refletir', profile.reflection],
-  ] as const
-}
-
-function profileHeight(profile: ReturnType<typeof getProfile>, fonts: Fonts, width: number): number {
-  const bodyWidth = width - 120
-  const sectionHeight = sectionsFor(profile).reduce((height, [, body]) => height + Math.max(1, wrapText(body, fonts.regular, 8.4, bodyWidth).length) * 10.5 + 2, 0)
-  return 44 + textHeight(profile.summary, fonts.regular, 9.2, width, 11.5) + sectionHeight
-}
-
-function drawProfile(page: PDFPage, profile: ReturnType<typeof getProfile>, score: number, maximum: number, x: number, top: number, width: number, fonts: Fonts): number {
-  const title = `Tipo ${profile.type}  ·  ${profile.name}`
-  page.drawText(title, { x, y: top, size: 13.2, font: fonts.serifBold, color: navy })
-  const scoreText = `${score}/${maximum}`
-  const scoreWidth = fonts.bold.widthOfTextAtSize(scoreText, 9)
-  page.drawText(scoreText, { x: x + width - scoreWidth, y: top + 1, size: 9, font: fonts.bold, color: navy })
-
-  let y = top - 19
-  y = drawParagraph(page, profile.summary, fonts.regular, 9.2, x, y, width, muted, 11.5) - 5
-  for (const [label, body] of sectionsFor(profile)) {
-    const labelText = `${label.toLocaleUpperCase('pt-BR')}  ·`
-    const labelSize = 6.6
-    const bodySize = 8.4
-    const labelWidth = fonts.bold.widthOfTextAtSize(labelText, labelSize) + 7
-    const bodyX = x + labelWidth
-    const bodyWidth = width - labelWidth
-    const lines = wrapText(body, fonts.regular, bodySize, bodyWidth)
-    lines.forEach((line, index) => {
-      if (index === 0) page.drawText(labelText, { x, y, size: labelSize, font: fonts.bold, color: gold })
-      page.drawText(line, { x: bodyX, y, size: bodySize, font: fonts.regular, color: muted })
-      y -= 10.5
+  visual.centers.forEach((center, groupIndex) => {
+    const groupTop = bodyTop - groupIndex * rowHeight * 3
+    const groupBottom = groupTop - rowHeight * 3
+    const rowValues = visual.rows.filter(row => center.types.includes(row.type))
+    rowValues.forEach((row, index) => {
+      const rowTop = groupTop - index * rowHeight
+      const rowBottom = rowTop - rowHeight
+      if (index > 0) page.drawLine({ start: { x, y: rowTop }, end: { x: x + widths[0] + widths[1], y: rowTop }, thickness: 0.4, color: color(lightRule) })
+      page.drawText(`Tipo ${row.type}`, { x: x + 7, y: rowBottom + 11, size: 8, font: fonts.bold, color: color(typeColors[row.type]) })
+      page.drawText(row.name, { x: x + widths[0] + 7, y: rowBottom + 11, size: 7.8, font: fonts.regular, color: color(typeColors[row.type]) })
     })
-    y -= 2
+    page.drawRectangle({ x, y: groupBottom, width: tableWidth, height: rowHeight * 3, borderColor: color(lightRule), borderWidth: 0.55 })
+    const centerX = x + widths[0] + widths[1]
+    page.drawLine({ start: { x: centerX, y: groupBottom }, end: { x: centerX, y: groupTop }, thickness: 0.5, color: color(lightRule) })
+    page.drawLine({ start: { x: centerX + widths[2], y: groupBottom }, end: { x: centerX + widths[2], y: groupTop }, thickness: 0.5, color: color(lightRule) })
+    page.drawText(center.name, { x: centerX + 7, y: groupBottom + rowHeight * 1.5 - 3, size: 8.2, font: fonts.regular, color: color(center.color) })
+    page.drawText(`${center.percentage}%`, { x: centerX + widths[2] + 7, y: groupBottom + rowHeight * 1.5 - 3, size: 10.2, font: fonts.bold, color: color(center.color) })
+  })
+  const tableBottom = bodyTop - rowHeight * 9
+  let cursor = x
+  for (const width of widths.slice(0, -1)) {
+    cursor += width
+    page.drawLine({ start: { x: cursor, y: tableBottom }, end: { x: cursor, y: bodyTop }, thickness: 0.5, color: color(lightRule) })
   }
-  const end = y - 2
-  page.drawLine({ start: { x, y: end }, end: { x: x + width, y: end }, thickness: 0.45, color: lightRule })
-  return end - 10
 }
 
-function drawBrandHeader(page: PDFPage, logo: Awaited<ReturnType<PDFDocument['embedPng']>>, fonts: Fonts): void {
-  page.drawRectangle({ x: 0, y: pageHeight - 7, width: pageWidth, height: 7, color: navy })
-  const size = logo.scaleToFit(54, 54)
-  page.drawImage(logo, { x: margin + (54 - size.width) / 2, y: pageHeight - 79 + (54 - size.height) / 2, ...size })
-  page.drawText('Deise A. Zardeto Bello', { x: 122, y: pageHeight - 44, size: 15, font: fonts.bold, color: navy })
-  page.drawText('Psicologia Clínica e Neuropsicologia', { x: 122, y: pageHeight - 62, size: 8.5, font: fonts.regular, color: muted })
-  page.drawText('RELATÓRIO DE AUTOCONHECIMENTO  ·  ENEAGRAMA', { x: 122, y: pageHeight - 78, size: 6.8, font: fonts.bold, color: gold })
-  page.drawLine({ start: { x: margin, y: pageHeight - 101 }, end: { x: pageWidth - margin, y: pageHeight - 101 }, thickness: 0.65, color: gold })
-}
-
-function drawContinuationHeader(page: PDFPage, fonts: Fonts): void {
-  page.drawRectangle({ x: 0, y: pageHeight - 7, width: pageWidth, height: 7, color: navy })
-  page.drawText('ENEAGRAMA  ·  CONTINUAÇÃO', { x: margin, y: pageHeight - 37, size: 8, font: fonts.bold, color: muted })
-  page.drawLine({ start: { x: margin, y: pageHeight - 49 }, end: { x: pageWidth - margin, y: pageHeight - 49 }, thickness: 0.55, color: gold })
-}
-
-function drawFooter(page: PDFPage, pageNumber: number, pageCount: number, fonts: Fonts): void {
-  page.drawLine({ start: { x: margin, y: 42 }, end: { x: pageWidth - margin, y: 42 }, thickness: 0.45, color: lightRule })
-  page.drawText('Deise A. Zardeto Bello', { x: margin, y: 27, size: 7.3, font: fonts.bold, color: muted })
-  const pageLabel = `${pageNumber} / ${pageCount}`
-  page.drawText(pageLabel, { x: pageWidth - margin - fonts.regular.widthOfTextAtSize(pageLabel, 7.3), y: 27, size: 7.3, font: fonts.regular, color: muted })
-}
-
-function chartHeight(fonts: Fonts): number {
-  return 291 + textHeight(method, fonts.regular, 7.8, contentWidth, 10.5)
-    + textHeight(percentNote, fonts.regular, 7.8, contentWidth, 10.5)
-    + textHeight(disclaimer, fonts.regular, 7.8, contentWidth, 10.5)
-}
-
-function drawChartAndContext(page: PDFPage, result: ScoreResult, top: number, fonts: Fonts): number {
-  let y = top
-  page.drawText('Distribuição das pontuações', { x: margin, y, size: 17, font: fonts.serifBold, color: navy })
-  y -= 15
-  page.drawText('As barras mostram as somas em relação ao máximo possível de 75 pontos.', { x: margin, y, size: 8.2, font: fonts.regular, color: muted })
-  y -= 24
-
-  const typeX = margin
-  const barX = margin + 139
-  const barWidth = 198
-  const scoreX = barX + barWidth + 12
-  const percentX = scoreX + 48
-  page.drawText('TIPO', { x: typeX, y, size: 6.5, font: fonts.bold, color: muted })
-  page.drawText('SOMA / 75', { x: scoreX, y, size: 6.5, font: fonts.bold, color: muted })
-  page.drawText('PARTICIPAÇÃO', { x: percentX, y, size: 6.5, font: fonts.bold, color: muted })
-  y -= 15
-
-  for (const score of result.scores) {
-    const profile = getProfile(score.type)
-    const leader = result.leaders.includes(score.type)
-    page.drawText(`${String(score.type).padStart(2, '0')}  ${profile.name}`, {
-      x: typeX,
-      y,
-      size: 8.2,
-      font: leader ? fonts.bold : fonts.regular,
-      color: leader ? navy : muted,
-    })
-    const fillWidth = barWidth * (score.raw / score.maximum)
-    page.drawRectangle({ x: barX, y: y + 1, width: barWidth, height: 4, color: track })
-    page.drawRectangle({ x: barX, y: y + 1, width: fillWidth, height: 4, color: leader ? gold : navy })
-    page.drawText(`${score.raw}/${score.maximum}`, { x: scoreX, y, size: 8.6, font: leader ? fonts.bold : fonts.regular, color: navy })
-    page.drawText(`${score.percentage.toFixed(1)}%`, { x: percentX, y, size: 7.3, font: fonts.regular, color: muted })
-    y -= 20
+function drawBarChart(page: PDFPage, fonts: Fonts, visual: ReturnType<typeof getResultVisualData>, leaders: readonly EnneagramType[]) {
+  const x = 410
+  const width = pageWidth - margin - x
+  const titleY = 458
+  page.drawText('Representatividade dos tipos', { x, y: titleY, size: 11.5, font: fonts.bold, color: color(navy) })
+  page.drawText('Pontuação direta · escala de 0 a 75', { x, y: titleY - 13, size: 7.2, font: fonts.regular, color: color(muted) })
+  const plotLeft = x + 29
+  const plotRight = x + width - 5
+  const plotBottom = 257
+  const plotHeight = 150
+  for (const tick of [0, 15, 30, 45, 60, 75]) {
+    const y = plotBottom + (tick / 75) * plotHeight
+    page.drawLine({ start: { x: plotLeft, y }, end: { x: plotRight, y }, thickness: tick === 0 ? 0.7 : 0.35, color: color(tick === 0 ? '#a8b0b6' : '#e3e6e8') })
+    drawRight(page, String(tick), plotLeft - 6, y - 2.3, 6.3, fonts.regular, muted)
   }
+  const slot = (plotRight - plotLeft) / visual.rows.length
+  visual.rows.forEach((row, index) => {
+    const barWidth = 23
+    const barX = plotLeft + slot * index + (slot - barWidth) / 2
+    const height = (row.raw / 75) * plotHeight
+    const isLeader = leaders.includes(row.type)
+    page.drawRectangle({ x: barX, y: plotBottom, width: barWidth, height, color: color(typeColors[row.type]), borderColor: color(isLeader ? gold : typeColors[row.type]), borderWidth: isLeader ? 1.1 : 0 })
+    const value = String(row.raw)
+    const valueSize = 7.8
+    page.drawText(value, { x: barX + (barWidth - fonts.bold.widthOfTextAtSize(value, valueSize)) / 2, y: plotBottom + height + 4, size: valueSize, font: fonts.bold, color: color(navy) })
+    const label = `Tipo ${row.type}`
+    const labelSize = 5.8
+    page.drawText(label, { x: plotLeft + slot * index + (slot - fonts.regular.widthOfTextAtSize(label, labelSize)) / 2, y: plotBottom - 13, size: labelSize, font: fonts.regular, color: color(muted) })
+  })
+}
 
-  y -= 3
-  page.drawLine({ start: { x: margin, y: y + 7 }, end: { x: pageWidth - margin, y: y + 7 }, thickness: 0.45, color: lightRule })
-  y -= 12
-  for (const [label, body] of [
-    ['Metodologia', method],
-    ['Leitura dos percentuais', percentNote],
-    ['Nota de uso', disclaimer],
-  ]) {
-    page.drawText(label, { x: margin, y, size: 7.3, font: fonts.bold, color: navy })
-    y -= 10
-    y = drawParagraph(page, body, fonts.regular, 7.8, margin, y, contentWidth, muted, 10.5) - 4
+function drawPieSlice(page: PDFPage, centerX: number, centerY: number, radius: number, start: number, end: number, fill: string) {
+  const steps = Math.max(8, Math.ceil((end - start) / 4))
+  const points = [{ x: radius, y: radius }]
+  for (let step = 0; step <= steps; step += 1) {
+    const angle = (start + ((end - start) * step) / steps - 90) * Math.PI / 180
+    points.push({ x: radius + radius * Math.cos(angle), y: radius + radius * Math.sin(angle) })
   }
-  return y
+  const path = `M ${points.map((point, index) => `${index === 0 ? '' : 'L '}${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ')} Z`
+  page.drawSvgPath(path, { x: centerX - radius, y: centerY + radius, color: color(fill), borderColor: rgb(1, 1, 1), borderWidth: 0.8 })
+}
+
+function drawCenterChart(page: PDFPage, fonts: Fonts, visual: ReturnType<typeof getResultVisualData>) {
+  const x = 410
+  page.drawText('Centros de inteligência', { x, y: 218, size: 11.5, font: fonts.bold, color: color(navy) })
+  page.drawText('Percentuais das somas por centro · total arredondado para 100%', { x, y: 205, size: 6.8, font: fonts.regular, color: color(muted) })
+  const centerX = x + 90
+  const centerY = 120
+  const radius = 72
+  let angle = 0
+  visual.centers.forEach(center => {
+    const extent = (center.raw / (visual.total || 1)) * 360
+    drawPieSlice(page, centerX, centerY, radius, angle, angle + extent, center.color)
+    const middle = angle + extent / 2 - 90
+    const labelX = centerX + Math.cos(middle * Math.PI / 180) * radius * 0.57
+    const labelY = centerY - Math.sin(middle * Math.PI / 180) * radius * 0.57
+    const label = `${center.percentage}%`
+    page.drawText(label, { x: labelX - fonts.bold.widthOfTextAtSize(label, 9) / 2, y: labelY - 3, size: 9, font: fonts.bold, color: rgb(1, 1, 1) })
+    angle += extent
+  })
+  visual.centers.forEach((center, index) => {
+    const y = 155 - index * 22
+    page.drawRectangle({ x: x + 196, y: y - 1, width: 9, height: 9, color: color(center.color) })
+    page.drawText(center.name, { x: x + 212, y, size: 8, font: fonts.regular, color: color(muted) })
+    drawRight(page, `${center.percentage}%`, pageWidth - margin, y, 8.2, fonts.bold, navy)
+  })
+}
+
+function drawFooter(page: PDFPage, fonts: Fonts) {
+  page.drawLine({ start: { x: margin, y: 34 }, end: { x: pageWidth - margin, y: 34 }, thickness: 0.5, color: color(lightRule) })
+  const line1 = wrapText(method, fonts.regular, 6.5, pageWidth - margin * 2)
+  const line2 = wrapText(disclaimer, fonts.regular, 6.5, pageWidth - margin * 2)
+  page.drawText(line1[0], { x: margin, y: 22, size: 6.5, font: fonts.regular, color: color(muted) })
+  page.drawText(line2[0], { x: margin, y: 12, size: 6.5, font: fonts.regular, color: color(muted) })
+  drawRight(page, 'Deise A. Zardeto Bello  ·  Eneagrama', pageWidth - margin, 22, 6.5, fonts.bold, muted)
+}
+
+export function rankScoresForReport(result: ScoreResult): ScoreResult['scores'] {
+  return [...result.scores].sort((a, b) => b.raw - a.raw || a.type - b.type)
 }
 
 export function sanitizeFilenameName(name: string): string {
@@ -198,102 +200,25 @@ export function reportFilename(participantName = ''): string {
 
 export async function createReport(result: ScoreResult, performedAt: Date, participantName = ''): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
-  doc.setTitle('Eneagrama - Relatório de autoconhecimento')
+  doc.setTitle('Eneagrama - Resultado')
   doc.setAuthor('Deise A. Zardeto Bello')
-  const fonts: Fonts = {
-    regular: await doc.embedFont(StandardFonts.Helvetica),
-    bold: await doc.embedFont(StandardFonts.HelveticaBold),
-    serif: await doc.embedFont(StandardFonts.TimesRoman),
-    serifBold: await doc.embedFont(StandardFonts.TimesRomanBold),
+  const fonts: Fonts = { regular: await doc.embedFont(StandardFonts.Helvetica), bold: await doc.embedFont(StandardFonts.HelveticaBold) }
+  const response = await fetch(`${import.meta.env.BASE_URL}branding/logo-original.png`)
+  if (!response.ok) throw new Error('Não foi possível carregar a identidade visual do relatório.')
+  const logo = await doc.embedPng(await response.arrayBuffer())
+  const page = doc.addPage([pageWidth, pageHeight])
+  const visual = getResultVisualData(result, type => getProfile(type).name)
+  drawHeader(page, fonts, logo, performedAt, participantName)
+  const title = 'Resultado Tipo Eneagrama'
+  page.drawText(title, { x: (pageWidth - fonts.bold.widthOfTextAtSize(title, 19)) / 2, y: 488, size: 19, font: fonts.bold, color: color(navy) })
+  if (result.leaders.length > 1) {
+    const tieText = `Empate no topo: Tipos ${result.leaders.join(', ')} · ${result.topScore} pontos cada · sem desempate.`
+    page.drawText(tieText, { x: (pageWidth - fonts.regular.widthOfTextAtSize(tieText, 7.5)) / 2, y: 475, size: 7.5, font: fonts.regular, color: color(muted) })
   }
-  const logoResponse = await fetch(`${import.meta.env.BASE_URL}branding/logo-original.png`)
-  if (!logoResponse.ok) throw new Error('Não foi possível carregar a identidade visual do relatório.')
-  const logo = await doc.embedPng(await logoResponse.arrayBuffer())
-  const date = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(performedAt)
-  const pages: PDFPage[] = []
-  let page!: PDFPage
-  let y = 0
-  const addPage = (first = false) => {
-    page = doc.addPage([pageWidth, pageHeight])
-    pages.push(page)
-    if (first) {
-      drawBrandHeader(page, logo, fonts)
-      y = pageHeight - 124
-    } else {
-      drawContinuationHeader(page, fonts)
-      y = pageHeight - 72
-    }
-  }
-
-  addPage(true)
-  const leaders = [...result.leaders].sort((a, b) => a - b)
-  const uniqueLeader = result.dominantType !== null
-  const participant = participantName.trim()
-  if (uniqueLeader) {
-    const profile = getProfile(result.dominantType!)
-    const score = result.scores.find(item => item.type === result.dominantType)!
-    page.drawText(`Tipo ${profile.type}  ·  ${profile.name}`, { x: margin, y, size: 22, font: fonts.serifBold, color: navy })
-    y -= 24
-    page.drawText(`Maior pontuação  ·  ${score.raw}/${score.maximum}`, { x: margin, y, size: 9, font: fonts.bold, color: gold })
-    y -= 17
-  } else {
-    page.drawText('Perspectivas empatadas', { x: margin, y, size: 21, font: fonts.serifBold, color: navy })
-    y -= 22
-    page.drawText(`${leaders.length} tipos com a mesma pontuação  ·  sem tipo vencedor`, { x: margin, y, size: 8.7, font: fonts.regular, color: muted })
-    y -= 17
-  }
-
-  if (participant) {
-    page.drawText('PARTICIPANTE', { x: margin, y, size: 6.5, font: fonts.bold, color: gold })
-    y -= 10
-    y = drawParagraph(page, participant, fonts.regular, 8.5, margin, y, contentWidth, navy, 10.5) - 2
-  }
-  page.drawText(`REALIZADO EM  ${date}`, { x: margin, y, size: 7.8, font: fonts.regular, color: muted })
-  y -= 20
-
-  if (uniqueLeader) {
-    const profile = getProfile(leaders[0])
-    y = drawParagraph(page, profile.summary, fonts.regular, 9.5, margin, y, contentWidth, navy, 12) - 4
-    for (const [label, body] of sectionsFor(profile)) {
-      const labelText = `${label.toLocaleUpperCase('pt-BR')}  ·`
-      const labelWidth = fonts.bold.widthOfTextAtSize(labelText, 6.7) + 7
-      page.drawText(labelText, { x: margin, y, size: 6.7, font: fonts.bold, color: gold })
-      const bodyLines = wrapText(body, fonts.regular, 8.6, contentWidth - labelWidth)
-      bodyLines.forEach((line, index) => page.drawText(line, { x: margin + labelWidth, y: y - index * 10.8, size: 8.6, font: fonts.regular, color: muted }))
-      y -= Math.max(1, bodyLines.length) * 10.8 + 4
-    }
-  } else {
-    const heights = leaders.map(type => profileHeight(getProfile(type), fonts, contentWidth))
-    const firstPageCapacity = y - bottomLimit
-    const continuationCapacity = pageHeight - 72 - bottomLimit
-    let profilePageSplit = 0
-    let firstPageUsed = 0
-    for (let index = 0; index < heights.length; index += 1) {
-      firstPageUsed += heights[index]
-      if (firstPageUsed > firstPageCapacity) break
-      const remainder = heights.slice(index + 1).reduce((total, height) => total + height, 0)
-      const chartFitsFirstPage = index === heights.length - 1 && y - firstPageUsed - chartHeight(fonts) >= bottomLimit
-      const remainingFitsContinuation = index < heights.length - 1 && remainder + chartHeight(fonts) <= continuationCapacity
-      if (chartFitsFirstPage || remainingFitsContinuation) profilePageSplit = index + 1
-    }
-
-    for (const [index, type] of leaders.entries()) {
-      if (profilePageSplit > 0 && profilePageSplit < leaders.length && index === profilePageSplit) addPage()
-      const profile = getProfile(type)
-      const score = result.scores.find(item => item.type === type)!
-      const needed = profileHeight(profile, fonts, contentWidth)
-      if (y - needed < bottomLimit) {
-        addPage()
-      }
-      y = drawProfile(page, profile, score.raw, score.maximum, margin, y, contentWidth, fonts)
-    }
-  }
-
-  const chartNeedsOwnPage = y - chartHeight(fonts) < bottomLimit
-  if (chartNeedsOwnPage) addPage()
-  drawChartAndContext(page, result, y - 2, fonts)
-
-  for (const [index, reportPage] of pages.entries()) drawFooter(reportPage, index + 1, pages.length, fonts)
+  drawTypeTable(page, fonts, visual)
+  drawBarChart(page, fonts, visual, result.leaders)
+  drawCenterChart(page, fonts, visual)
+  drawFooter(page, fonts)
   return doc.save()
 }
 
